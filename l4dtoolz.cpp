@@ -19,7 +19,8 @@ void *l4dtoolz::setmax_ptr = NULL;
 uint *l4dtoolz::steam3_ptr = NULL;
 void *l4dtoolz::authreq_ptr = NULL;
 void *l4dtoolz::authreq_org = NULL;
-void *l4dtoolz::authrsp_ptr = NULL;
+uint *l4dtoolz::authrsp_ptr = NULL;
+uint l4dtoolz::authrsp_org = 0;
 void *l4dtoolz::info_players_ptr = NULL;
 void *l4dtoolz::info_players_org = NULL;
 void *l4dtoolz::lobby_match_ptr = NULL;
@@ -54,19 +55,23 @@ void l4dtoolz::OnChangeMax(IConVar *var, const char *pOldValue, float flOldValue
 	write_signature(info_players_ptr, info_players_new);
 }
 
-ConVar sv_setmax("sv_setmax", "18", 0, "Max clients", true, 18, true, 32, l4dtoolz::OnSetMax);
-void l4dtoolz::OnSetMax(IConVar *var, const char *pOldValue, float flOldValue){
-	int new_value = ((ConVar *)var)->GetInt();
+void l4dtoolz::SetMax_f(const CCommand &args){
+	if(args.ArgC()!=2){
+		Msg("[L4DToolZ] sv_setmax <num>\n");
+		return;
+	}
 	if(!setmax_ptr){
 		Msg("[L4DToolZ] sv_setmax init error\n");
 		return;
 	}
+	int val = atoi(args[1]);
 #ifdef WIN32
-	((void (__thiscall *)(void *, int))setmax_ptr)(sv_ptr, new_value);
+	((void (__thiscall *)(void *, int))setmax_ptr)(sv_ptr, val);
 #else
-	((void (*)(void *, int))setmax_ptr)(sv_ptr, new_value);
+	((void (*)(void *, int))setmax_ptr)(sv_ptr, val);
 #endif
 }
+ConCommand setmax("sv_setmax", l4dtoolz::SetMax_f, "Max clients");
 
 void l4dtoolz::LevelInit(char const *){
 	int slots = sv_maxplayers.GetInt();
@@ -74,9 +79,9 @@ void l4dtoolz::LevelInit(char const *){
 }
 
 #ifdef WIN32
-int OnAuth(const void *, int, uint64 steamID){
+int l4dtoolz::PreAuth(const void *, int, uint64 steamID){
 #else
-int OnAuth(void *, const void *, int, uint64 steamID){
+int l4dtoolz::PreAuth(void *, const void *, int, uint64 steamID){
 #endif
 	if(!steamID){
 		Msg("[L4DToolZ] invalid steamID.\n");
@@ -86,8 +91,8 @@ int OnAuth(void *, const void *, int, uint64 steamID){
 	return 0;
 }
 
-ConVar sv_steam_bypass("sv_steam_bypass", "0", 0, "Bypass steam validation", true, 0, true, 1, l4dtoolz::OnBypass);
-void l4dtoolz::OnBypass(IConVar *var, const char *pOldValue, float flOldValue){
+ConVar sv_steam_bypass("sv_steam_bypass", "0", 0, "Bypass steam validation", true, 0, true, 1, l4dtoolz::OnBypassAuth);
+void l4dtoolz::OnBypassAuth(IConVar *var, const char *pOldValue, float flOldValue){
 	int new_value = ((ConVar *)var)->GetInt();
 	int old_value = atoi(pOldValue);
 	if(new_value==old_value) return;
@@ -99,11 +104,10 @@ void l4dtoolz::OnBypass(IConVar *var, const char *pOldValue, float flOldValue){
 	}
 	unsigned char authreq_new[6] = {0x04, 0x00};
 	if(!authreq_ptr){
-		auto gsrv = (uint **)steam3_ptr[1];
-		if(!gsrv) goto err_bypass;
-		authreq_ptr = &gsrv[0][authreq_idx];
-		authrsp_ptr = (uint *)steam3_ptr[authrsp_idx];
-		*(uint *)&authreq_new[2] = (uint)&OnAuth;
+		auto gsv = (uint **)steam3_ptr[1];
+		if(!gsv) goto err_bypass;
+		authreq_ptr = &gsv[0][authreq_idx];
+		*(uint *)&authreq_new[2] = (uint)&l4dtoolz::PreAuth;
 		read_signature(authreq_ptr, authreq_new, authreq_org);
 	}
 	if(new_value) write_signature(authreq_ptr, authreq_new);
@@ -119,23 +123,53 @@ PLUGIN_RESULT l4dtoolz::ClientConnect(bool *bAllowConnect, edict_t *pEntity, con
 		*bAllowConnect = false;
 		return PLUGIN_STOP;
 	}
-	struct {
-		uint64 id;
-		int code;
-		uint64 owner;
-	} rsp = {*(uint64 *)steamID};
-	#ifdef WIN32
-	((void (__thiscall *)(void *, void *))authrsp_ptr)(steam3_ptr, &rsp);
+	ValidateAuthTicketResponse_t rsp = {*(uint64 *)steamID};
+#ifdef WIN32
+	((void (__thiscall *)(void *, void *))authrsp_org)(steam3_ptr, &rsp);
 #else
-	((void (*)(void *, void *))authrsp_ptr)(steam3_ptr, &rsp);
+	((void (*)(void *, void *))authrsp_org)(steam3_ptr, &rsp);
 #endif
 	if(engine->GetPlayerUserId(pEntity)==-1) goto reject;
 	Msg("[L4DToolZ] %llu validated.\n", rsp.id);
 	return PLUGIN_CONTINUE;
 }
 
-ConVar sv_force_unreserved("sv_force_unreserved", "0", 0, "Disallow lobby reservation", true, 0, true, 1, l4dtoolz::OnChangeUnreserved);
-void l4dtoolz::OnChangeUnreserved(IConVar *var, const char *pOldValue, float flOldValue){
+#ifdef WIN32
+void l4dtoolz::PostAuth(ValidateAuthTicketResponse_t *rsp){
+#else
+void l4dtoolz::PostAuth(void *, ValidateAuthTicketResponse_t *rsp){
+#endif
+	if(rsp->id!=rsp->owner){
+		rsp->code = 2;
+		Msg("[L4DToolZ] %llu using family sharing, owner: %llu.\n", rsp->id, rsp->owner);
+	}
+#ifdef WIN32
+	__asm{
+		leave
+		mov ecx, steam3_ptr
+		jmp authrsp_org
+	}
+#else
+	((void (*)(void *, void *))authrsp_org)(steam3_ptr, rsp);
+#endif
+}
+
+ConVar sv_anti_sharing("sv_anti_sharing", "0", 0, "No family sharing", true, 0, true, 1, l4dtoolz::OnAntiSharing);
+void l4dtoolz::OnAntiSharing(IConVar *var, const char *pOldValue, float flOldValue){
+	int new_value = ((ConVar *)var)->GetInt();
+	int old_value = atoi(pOldValue);
+	if(new_value==old_value) return;
+	if(!authrsp_ptr){
+		var->SetValue(0);
+		Msg("[L4DToolZ] sv_anti_sharing init error\n");
+		return;
+	}
+	if(new_value) *authrsp_ptr = (uint)&l4dtoolz::PostAuth;
+	else *authrsp_ptr = authrsp_org;
+}
+
+ConVar sv_force_unreserved("sv_force_unreserved", "0", 0, "Disallow lobby reservation", true, 0, true, 1, l4dtoolz::OnForceUnreserved);
+void l4dtoolz::OnForceUnreserved(IConVar *var, const char *pOldValue, float flOldValue){
 	int new_value = ((ConVar *)var)->GetInt();
 	int old_value = atoi(pOldValue);
 	if(new_value==old_value) return;
@@ -163,13 +197,13 @@ void l4dtoolz::Unreserved_f(){
 }
 ConCommand unreserved("sv_unreserved", l4dtoolz::Unreserved_f, "Remove lobby reservation");
 
-int l4dtoolz::GetTick(){
-	static int tick = CommandLine()->ParmValue("-tickrate", 0);
+int GetTick(){
+	static int tick = CommandLine()->ParmValue("-tickrate", 30);
 	return tick;
 }
 
-float GetTickInterval(void *){
-	static float tickint = 1.0/l4dtoolz::GetTick();
+float GetTickInterval(){
+	static float tickint = 1.0/GetTick();
 	return tickint;
 }
 
@@ -197,16 +231,20 @@ bool l4dtoolz::Load(CreateInterfaceFn interfaceFactory, CreateInterfaceFn gameSe
 	if(!sv_ptr){
 		uint **net = (uint **)interfaceFactory("INETSUPPORT_001", NULL);
 		if(!net) goto err_sv;
-		uint func = net[0][8], **p_sv = *(uint ***)(func+sv_off);
-		if(!CHKPTR(p_sv)) goto err_sv;
-		sv_ptr = p_sv;
-		slots_ptr = (uint *)&p_sv[slots_idx];
-		uint p1 = func+cookie_off, p2 = p_sv[0][steam3_idx]+steam3_off;
+		uint func = net[0][8], **sv = *(uint ***)(func+sv_off);
+		if(!CHKPTR(sv)) goto err_sv;
+		sv_ptr = sv;
+		slots_ptr = (uint *)&sv[slots_idx];
+		uint p1 = func+cookie_off, p2 = sv[0][steam3_idx]+steam3_off;
 		cookie_ptr = GETPTR(READCALL(p1));
-		setmax_ptr = GETPTR(p_sv[0][setmax_idx]);
+		setmax_ptr = GETPTR(sv[0][setmax_idx]);
 		auto sfunc = (uint *(*)(void))READCALL(p2);
-		if(CHKPTR(sfunc)) steam3_ptr = sfunc(); // conn
-		lobby_req_ptr = (void *)p_sv[0][lobbyreq_idx];
+		if(CHKPTR(sfunc)){
+			steam3_ptr = sfunc(); // conn
+			authrsp_ptr = &steam3_ptr[authrsp_idx];
+			authrsp_org = *authrsp_ptr;
+		}
+		lobby_req_ptr = (void *)sv[0][lobbyreq_idx];
 		read_signature(lobby_req_ptr, lobby_req_new, lobby_req_org);
 	}
 err_sv:
@@ -217,7 +255,8 @@ err_sv:
 	}
 
 	int tick = GetTick();
-	if(!tick) return true;
+	if(tick==30) return true;
+	Msg("[L4DToolZ] tickrate: %d\n", tick);
 	if(!tickint_ptr){
 		auto game = (uint **)gameServerFactory(INTERFACEVERSION_SERVERGAMEDLL, NULL);
 		tickint_ptr = &game[0][tickint_idx];
@@ -247,6 +286,7 @@ void l4dtoolz::Unload(){
 	ConVar_Unregister();
 	DisconnectTier1Libraries();
 
+	if(authrsp_ptr) *authrsp_ptr = authrsp_org;
 	free_signature(info_players_ptr, info_players_org);
 	free_signature(lobby_match_ptr, lobby_match_org);
 	free_signature(range_check_ptr, range_check_org);
