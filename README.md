@@ -1,4 +1,5 @@
 # L4DToolZ
+### [English Version](https://github.com/lakwsh/l4dtoolz/blob/main/README_EN.md)
 - 安装方法: [下载](https://github.com/lakwsh/l4dtoolz/releases/latest)并解压到addons文件夹
 - **如使用tickrate解锁功能,请删除tickrate_enabler**
 - 遇到任何问题请先在**服务器控制台**输入`plugin_print`确认扩展已经正确加载
@@ -26,7 +27,6 @@
 - 在启动项中添加`-tickrate <tick>`,不设置则不做修改
 - **注意: 如通过plugin_load指令手动加载本扩展,可能出现tickrate异常问题**
 ### 2.1 相关CVar
-- 废弃(存在但改了不会有效果): `sv_maxrate`及`sv_minrate`
 - 需要修改(写到server.cfg,部分cvar需要sm_cvar前缀):
 - `sv_minupdaterate`,`sv_maxupdaterate`,`sv_mincmdrate`,`sv_maxcmdrate`,
 - `nb_update_frequency`,`sv_client_min_interp_ratio`,`fps_max`,
