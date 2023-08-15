@@ -1,6 +1,6 @@
 # L4DToolZ
 ### [English Version](https://github.com/lakwsh/l4dtoolz/blob/main/README_EN.md)
-- 安装方法: [下载](https://github.com/lakwsh/l4dtoolz/actions?query=branch%3Amain)并解压到addons文件夹
+- 安装方法: [下载](https://github.com/lakwsh/l4dtoolz/actions/workflows/main.yml)并解压到addons文件夹
 - **如使用tickrate解锁功能,请删除tickrate_enabler**
 - 遇到任何问题请先在**服务器控制台**输入`plugin_print`确认扩展已经正确加载
 
@@ -12,7 +12,6 @@
 ### 1.2 最大玩家数(-1~31)
 #### `sv_maxplayers <num>`
 - 服务器最多能进多少个玩家(设置为-1则不做修改)
-- **该cvar为采用延迟加载,不能加入到启动项中**
 ### 1.3 禁止大厅匹配
 #### `sv_force_unreserved <0/1>`(置1为禁止)
 - 开启功能会将`sv_allow_lobby_connect_only`的值置0

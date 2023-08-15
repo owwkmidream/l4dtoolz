@@ -1,6 +1,6 @@
 # L4DToolZ
 ### [中文版本](https://github.com/lakwsh/l4dtoolz/blob/main/README.md)
-- Installation: [Download](https://github.com/lakwsh/l4dtoolz/actions?query=branch%3Amain) and unzip to the addons folder.
+- Installation: [Download](https://github.com/lakwsh/l4dtoolz/actions/workflows/main.yml) and unzip to the addons folder.
 - **If using tickrate unlock feature, please delete tickrate_enabler**
 - If you encounter any problem, first input `plugin_print` in the **server console** to confirm that the extension is loaded correctly.
 
@@ -12,7 +12,6 @@
 ### 1.2 Maximum number of players (-1~31)
 #### `sv_maxplayers <num>`
 - The maximum number of players the server can accommodate (set to -1 for no modification).
-- **This cvar is loaded with delay and cannot be added to the startup options.**
 ### 1.3 Prohibit Lobby Matching
 #### `sv_force_unreserved <0/1>` (set to 1 to disable)
 - Activating this function will set the value of `sv_allow_lobby_connect_only` to 0.
