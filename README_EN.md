@@ -33,11 +33,11 @@
 - `sv_client_max_interp_ratio`,`net_splitrate`,`net_splitpacket_maxrate`
 
 ## 3. Bypass SteamID Verification
-#### `sv_steam_bypass <0/1>`(set to 1 to disable SteamID verification)
-- This feature can avoid the appearance of `No Steam logon` (code 6) (only for players entering under enabled status).
-- Activating this function **will weaken server security**, and the family sharing feature will be invalidated.
-- **This cvar is loaded with delay and cannot be added to the startup options.**
-- **Note: Enabling this feature may result in the issue that A2S query can't get the number of players, which can be fixed by patches (see releases).**
+#### `sv_steam_bypass <0/1>` (Set to 1 to bypass SteamID verification)
+- This feature can alleviate the `No Steam logon` (code 6) issue (only for players who enter while the feature is enabled).
+- Enabling this feature **will weaken server security**, and Family Sharing functionality will be disabled.
+- **This cvar is loaded with a delay and cannot be added to launch options.**
+- **Note: Enabling this feature will cause abnormal A2S_INFO results, which can be fixed with [this plugin](https://github.com/lakwsh/l4d2_vomit_fix).**
 
 ## 4. Disable Family Sharing (No dependency)
 #### `sv_anti_sharing` (set to 1 to enable this function)

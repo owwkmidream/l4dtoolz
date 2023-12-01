@@ -34,10 +34,10 @@
 
 ## 3. 绕过SteamID验证
 #### `sv_steam_bypass <0/1>`(置1为不验证SteamID)
-- 本功能可以避免出现`No Steam logon`(code 6)(仅限开启状态下进入的玩家)
+- 本功能可以缓解`No Steam logon`(code 6)问题(仅限开启状态下进入的玩家)
 - 开启本功能**会削弱服务器安全性**,且禁止家庭共享功能将失效
 - **该cvar为采用延迟加载,不能加入到启动项中**
-- **注意: 开启此功能会有A2S查询不到人数的问题,可以通过补丁(见releases)修复**
+- **注意: 开启此功能会导致A2S_INFO结果异常,可以通过[插件](https://github.com/lakwsh/l4d2_vomit_fix)修复**
 
 ## 4. 禁止家庭共享(无依赖)
 #### `sv_anti_sharing`(置1为开启功能)
